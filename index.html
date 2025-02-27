@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analemma Visualization</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: #121212;
+        color: #f0f0f0;
+      }
+      .container {
+        display: flex;
+        flex: 1;
+      }
+      #analemma-container {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+      .controls {
+        width: 300px;
+        padding: 20px;
+        background-color: #1e1e1e;
+        overflow-y: auto;
+        border-left: 1px solid #333;
+      }
+      .control-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #ddd;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        background-color: #333;
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 4px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .info {
+        padding: 15px;
+        background-color: #1e1e1e;
+        border-bottom: 1px solid #333;
+      }
+      h1, h2, h3 {
+        color: #4caf50;
+      }
+      #minimap-container {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid #4caf50;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      }
+      .tooltip {
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        display: none;
+        z-index: 100;
+      }
+      .legend {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+      .legend-color {
+        width: 15px;
+        height: 15px;
+        margin-right: 8px;
+        border-radius: 50%;
+      }
+    </style>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="info">
+      <h1>Analemma Visualization</h1>
+      <p>
+        This visualization shows the figure-8 pattern (analemma) traced by the
+        Sun when observed at the same time each day throughout a year.
+      </p>
+    </div>
+
+    <div class="container">
+      <div id="analemma-container">
+        <div id="minimap-container"></div>
+        <div class="tooltip" id="tooltip"></div>
+        <div class="legend">
+          <h3>Legend</h3>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #00ff00;"></div>
+            <span>January 1st</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #ff0000;"></div>
+            <span>Equinoxes/Solstices</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #ffff00;"></div>
+            <span>Regular Intervals</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <h2>Configuration</h2>
+
+        <div class="control-group">
+          <label for="latitude">Latitude:</label>
+          <input
+            type="number"
+            id="latitude"
+            min="-90"
+            max="90"
+            step="0.1"
+            value="40.7128"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="longitude">Longitude:</label>
+          <input
+            type="number"
+            id="longitude"
+            min="-180"
+            max="180"
+            step="0.1"
+            value="-74.0060"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="observation-time">Observation Time:</label>
+          <input type="time" id="observation-time" value="12:00" />
+        </div>
+
+        <div class="control-group">
+          <label for="year">Year:</label>
+          <input
+            type="number"
+            id="year"
+            min="1900"
+            max="2100"
+            step="1"
+            value="2025"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="mark-interval">Day Marker Interval:</label>
+          <input
+            type="number"
+            id="mark-interval"
+            min="1"
+            max="30"
+            step="1"
+            value="7"
+          />
+        </div>
+
+        <div class="control-group">
+          <label>Preset Locations:</label>
+          <select id="preset-locations">
+            <option value="">Select a location...</option>
+            <option value="40.7128,-74.0060">New York City</option>
+            <option value="51.5074,-0.1278">London</option>
+            <option value="35.6762,139.6503">Tokyo</option>
+            <option value="0,0">Equator (0°, 0°)</option>
+            <option value="90,0">North Pole</option>
+            <option value="-90,0">South Pole</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="atmosphere-toggle">Show Atmosphere:</label>
+          <input type="checkbox" id="atmosphere-toggle" checked />
+        </div>
+
+        <div class="control-group">
+          <label for="earth-opacity">Earth Opacity:</label>
+          <input type="range" id="earth-opacity" min="0.1" max="1" step="0.1" value="0.3" />
+        </div>
+
+        <button id="update-btn">Update Visualization</button>
+
+        <div class="control-group" style="margin-top: 20px">
+          <h3>Current Info:</h3>
+          <div id="info-panel"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script src="src/analemma-visualizer.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Initialize the analemma visualizer
+        const visualizer = new AnalemmaVisualizer('analemma-container', 'minimap-container');
+
+        // Handle preset location selection
+        document
+          .getElementById('preset-locations')
+          .addEventListener('change', function () {
+            if (this.value) {
+              const [lat, lng] = this.value.split(',').map(Number);
+              document.getElementById('latitude').value = lat;
+              document.getElementById('longitude').value = lng;
+            }
+          });
+
+        // Handle atmosphere toggle
+        document
+          .getElementById('atmosphere-toggle')
+          .addEventListener('change', function () {
+            visualizer.toggleAtmosphere(this.checked);
+          });
+
+        // Handle earth opacity change
+        document
+          .getElementById('earth-opacity')
+          .addEventListener('input', function () {
+            visualizer.updateEarthOpacity(parseFloat(this.value));
+          });
+
+        // Handle update button click
+        document
+          .getElementById('update-btn')
+          .addEventListener('click', function () {
+            const options = {
+              latitude: parseFloat(document.getElementById('latitude').value),
+              longitude: parseFloat(document.getElementById('longitude').value),
+              observationTime:
+                document.getElementById('observation-time').value,
+              year: parseInt(document.getElementById('year').value),
+              markInterval: parseInt(
+                document.getElementById('mark-interval').value
+              ),
+            };
+
+            visualizer.updateOptions(options);
+            updateInfoPanel(options);
+          });
+
+        // Initial info panel update
+        updateInfoPanel(visualizer.options);
+
+        function updateInfoPanel(options) {
+          const infoPanel = document.getElementById('info-panel');
+          infoPanel.innerHTML = `
+          <p><strong>Location:</strong> ${options.latitude.toFixed(
+            2
+          )}°, ${options.longitude.toFixed(2)}°</p>
+          <p><strong>Time:</strong> ${options.observationTime} local time</p>
+          <p><strong>Year:</strong> ${options.year}</p>
+          <p><strong>Marking every:</strong> ${options.markInterval} days</p>
+        `;
+        }
+      });
+    </script>
+  </body>
+</html>
